@@ -1,0 +1,72 @@
+version: '3.7'
+
+services:
+  nginx:
+    image: nginx:alpine
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_SUFFIX: ".conf"
+    ports:
+      - 80:80
+    volumes:
+      - "./docker/nginx/templates:/etc/nginx/templates:ro,cached"
+      - "./public:/var/www/app/public:ro,cached"
+      - "./var/coverage:/var/app/coverage:ro"
+      - "uploads:/var/app/uploads:ro"
+
+  db:
+    image: mariadb:10
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: myapp
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypass
+    ports:
+      - 13306:3306
+    volumes:
+      - "mysql:/var/lib/mysql"
+
+  adminer:
+    image: adminer:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - 8080:8080
+
+  php:
+    build: ./docker/php-fpm
+    environment:
+      REDIS_HOST: redis
+      MEMCACHE_HOST: memcached
+    volumes:
+      - "./:/var/www/app/:cached"
+      - "uploads:/var/app/uploads"
+    extra_hosts:
+      - "docker-host.localhost:127.0.0.1"
+    env_file: .env
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis-data:/data
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - 8081:8081
+
+  mailslurper:
+    image: marcopas/docker-mailslurper:latest
+    volumes:
+      - "./docker/mailslurper/config.json:/opt/mailslurper/config.json"
+      - "mailslurper:/var/mailslurper-data"
+    ports:
+      - 8070:8070
+      - 8075:8075
+
+volumes:
+  mysql:
+  redis-data:
+  uploads:
+  mailslurper:

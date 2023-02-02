@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# This is a collection of common docker commands to shorten the amount of typing required to run a task.  
+# The first argument should be the shortcut name, which is a key in the commands array.  Additional arguments 
+# will be added to the end of the command.  If a .docker.local.env file is found in the root project directory, 
+# it will be added to the command as a --env-file option.  
+# 
+# You can add new shortcuts here, or for less frequently used docker commands simply run the full docker-compose command.  
+#
+# Examples:
+#
+#   dcmd.sh start
+#     ...will run: `docker-compose up -d`
+#   dcmd.sh php bin/console about
+#     ...will run: `docker-compose exec php bin/console about` 
+
+SCRIPT_PATH=$(dirname $(realpath $0))
+ENV_FILE="${SCRIPT_PATH}/.docker.env.local"
+SHORTCUT=$1
+ARGS="${*:2}"
+cmd=""
+command=""
+
+case $SHORTCUT in
+  start) command="up -d";; # starts all services in background
+  stop) command="stop";; # stops all services
+  down) command="down";; # stops and tears down all services
+  php) command="exec php";; # runs php binary in php container
+  console) command="exec php php bin/console";; # runs application console, shortcut to above command
+  encore) command="run encore yarn encore";; # runs encore
+  db-dump) command="exec db mysqldump";; # runs mysqldump in db container, note that this will likely add extra content to the top of the file
+  db-load) command="exec -T db mysql";; # load database from mysql dump file
+  composer) command="exec php composer";; # runs composer binary in php container
+  test) command="exec php bin/phpunit";; # execute php unit tests
+  *) command=${SHORTCUT};; # pass through custom command 
+esac
+
+if [ -f "$ENV_FILE" ]; then
+    cmd="--env-file ${ENV_FILE}"
+fi
+
+cmd="docker-compose ${cmd} ${command} ${ARGS}"
+echo "Running: ${cmd}"
+$cmd
